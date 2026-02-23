@@ -4,17 +4,24 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { Header } from "@/components/Header";
 import Link from "next/link";
+import { useUser } from "@clerk/nextjs";
+import { supabase } from "@/lib/supabase";
 
-const MOCK_RECIPES: Record<string, { name: string; description: string; color: string; inputs: Array<{ id: string; label: string; type: string; placeholder: string; required: boolean }> }> = {
+const MOCK_RECIPES: Record<string, { 
+  name: string; 
+  description: string; 
+  color: string; 
+  inputs: Array<{ id: string; label: string; type: string; placeholder: string; required: boolean }> 
+}> = {
   "recruiter-dm": {
     name: "Recruiter LinkedIn DM",
     description: "Cold outreach that actually gets replies. Optimized for LinkedIn's 300-char limit.",
     color: "#00ff88",
     inputs: [
-      { id: "job_posting", label: "Job Posting", type: "textarea", placeholder: "Paste the job posting or describe the role...", required: true },
-      { id: "your_experience", label: "Your Experience", type: "textarea", placeholder: "Describe your relevant experience, achievements, metrics...", required: true },
-      { id: "recruiter_name", label: "Recruiter Name", type: "text", placeholder: "e.g., Sarah Chen", required: true },
-      { id: "referral", label: "Referral / Connection (optional)", type: "text", placeholder: "e.g., John mentioned you're hiring...", required: false },
+      { id: "job_posting", label: "Job Posting / Role", type: "textarea", placeholder: "Paste the job posting or describe the role you're targeting...", required: true },
+      { id: "your_experience", label: "Your Relevant Experience", type: "textarea", placeholder: "Your achievements with metrics (e.g., 'Scaled platform to 10M users, reduced latency by 40%')", required: true },
+      { id: "recruiter_name", label: "Recruiter's First Name", type: "text", placeholder: "e.g., Sarah", required: true },
+      { id: "mutual_connection", label: "Mutual Connection / Shared Interest", type: "text", placeholder: "e.g., Both worked in healthtech, shared connection with John", required: false },
     ]
   },
   "follow-up": {
@@ -23,8 +30,9 @@ const MOCK_RECIPES: Record<string, { name: string; description: string; color: s
     color: "#fbbf24",
     inputs: [
       { id: "original_message", label: "Your Original Message", type: "textarea", placeholder: "Paste what you sent before...", required: true },
-      { id: "new_value", label: "New Value to Add", type: "textarea", placeholder: "New achievement, article, insight to share...", required: true },
-      { id: "recruiter_name", label: "Recruiter Name", type: "text", placeholder: "e.g., Sarah Chen", required: true },
+      { id: "new_value", label: "New Value to Add", type: "textarea", placeholder: "New achievement, relevant news, article, or insight to share...", required: true },
+      { id: "recruiter_name", label: "Recruiter's First Name", type: "text", placeholder: "e.g., Sarah", required: true },
+      { id: "days_since", label: "Days Since Original Message", type: "text", placeholder: "e.g., 5 days", required: false },
     ]
   },
   "recruiter-comment": {
@@ -32,8 +40,9 @@ const MOCK_RECIPES: Record<string, { name: string; description: string; color: s
     description: "Thoughtful comment to get on their radar. Build presence, not pitch.",
     color: "#a78bfa",
     inputs: [
-      { id: "post_content", label: "The Post Content", type: "textarea", placeholder: "Paste or describe what they posted...", required: true },
+      { id: "post_content", label: "Their Post Content", type: "textarea", placeholder: "Paste or describe what they posted...", required: true },
       { id: "your_expertise", label: "Your Relevant Expertise", type: "textarea", placeholder: "What insight can you add based on your experience?", required: true },
+      { id: "your_take", label: "Your Unique Take", type: "text", placeholder: "What's your perspective on their topic?", required: false },
     ]
   },
   "cold-email": {
@@ -41,22 +50,31 @@ const MOCK_RECIPES: Record<string, { name: string; description: string; color: s
     description: "Direct email when you find recruiter's address. Short, specific, no spam.",
     color: "#60a5fa",
     inputs: [
-      { id: "job_posting", label: "Job Posting", type: "textarea", placeholder: "Paste the job posting or describe the role...", required: true },
-      { id: "your_experience", label: "Your Experience", type: "textarea", placeholder: "Describe your relevant experience, achievements, metrics...", required: true },
-      { id: "recruiter_name", label: "Recruiter Name", type: "text", placeholder: "e.g., Sarah Chen", required: true },
-      { id: "company_insight", label: "Company Insight (optional)", type: "text", placeholder: "Something specific about the company...", required: false },
+      { id: "job_posting", label: "Job Posting / Role", type: "textarea", placeholder: "Paste the job posting or describe the role...", required: true },
+      { id: "your_experience", label: "Your Relevant Experience", type: "textarea", placeholder: "Your key achievements with metrics...", required: true },
+      { id: "recruiter_name", label: "Recruiter's First Name", type: "text", placeholder: "e.g., Sarah", required: true },
+      { id: "company_insight", label: "Company-Specific Insight", type: "text", placeholder: "Recent news, product launch, or something specific about them...", required: false },
     ]
   }
 };
 
+interface GateResult {
+  name: string;
+  passed: boolean;
+  reason: string;
+}
+
 export default function RecipePage() {
   const params = useParams();
   const recipeId = params.id as string;
+  const { user } = useUser();
   
   const recipe = MOCK_RECIPES[recipeId];
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [gateResults, setGateResults] = useState<GateResult[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   if (!recipe) {
     return (
@@ -77,18 +95,53 @@ export default function RecipePage() {
   const handleGenerate = async () => {
     setIsLoading(true);
     setResult(null);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setResult(`Hi ${inputs.recruiter_name || 'there'},\n\n[This is a mock output. Connect your API to generate real messages.]\n\nBased on your inputs, Nexivra would generate a personalized message here with all claims verified by quality gates.`);
-    setIsLoading(false);
+    setError(null);
+    setGateResults([]);
+
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipeId, inputs }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate');
+      }
+
+      setResult(data.output);
+      setGateResults(data.gateResults || []);
+
+      // Save to Supabase if user is logged in
+      if (user) {
+        try {
+          await supabase.from('generations').insert({
+            user_id: user.id,
+            recipe_id: recipeId,
+            inputs,
+            output: data.output,
+            gate_results: data.gateResults,
+          });
+        } catch (e) {
+          console.error('Failed to save generation:', e);
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const isFormValid = recipe.inputs.filter(i => i.required).every(i => inputs[i.id]?.trim());
+  const passedGates = gateResults.filter(g => g.passed).length;
 
   return (
     <>
       <Header />
       
-      {/* Background */}
       <div style={{
         position: 'fixed',
         inset: 0,
@@ -178,7 +231,6 @@ export default function RecipePage() {
                         fontSize: '14px',
                         resize: 'vertical',
                         outline: 'none',
-                        transition: 'all 0.2s'
                       }}
                     />
                   ) : (
@@ -196,7 +248,6 @@ export default function RecipePage() {
                         color: '#fafafa',
                         fontSize: '14px',
                         outline: 'none',
-                        transition: 'all 0.2s'
                       }}
                     />
                   )}
@@ -223,7 +274,6 @@ export default function RecipePage() {
                 justifyContent: 'center',
                 gap: '10px',
                 boxShadow: isFormValid && !isLoading ? `0 0 30px ${recipe.color}40` : 'none',
-                transition: 'all 0.3s'
               }}
             >
               {isLoading ? (
@@ -236,11 +286,11 @@ export default function RecipePage() {
                     borderRadius: '50%',
                     animation: 'spin 1s linear infinite'
                   }} />
-                  Generating...
+                  Generating with AI...
                 </>
               ) : (
                 <>
-                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'currentColor' }} />
+                  <span style={{ fontSize: '16px' }}>⚡</span>
                   Generate Message
                 </>
               )}
@@ -249,6 +299,19 @@ export default function RecipePage() {
 
           {/* Results */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {error && (
+              <div style={{ 
+                padding: '16px 20px',
+                borderRadius: '12px',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                color: '#ef4444',
+                fontSize: '14px'
+              }}>
+                ⚠️ {error}
+              </div>
+            )}
+            
             {result ? (
               <>
                 <div style={{ 
@@ -271,7 +334,7 @@ export default function RecipePage() {
                         color: recipe.color,
                         fontWeight: 700
                       }}>✓</div>
-                      <span style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>Output</span>
+                      <span style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>Generated Message</span>
                     </div>
                     <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono', padding: '4px 10px', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: '6px', color: '#71717a' }}>{result.length} chars</span>
                   </div>
@@ -296,17 +359,39 @@ export default function RecipePage() {
                   </button>
                 </div>
 
+                {/* Quality Gates */}
                 <div style={{ padding: '20px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 100%)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        {[1,2,3,4,5,6,7].map(i => (
-                          <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#00ff88', boxShadow: '0 0 8px rgba(0, 255, 136, 0.6)' }} />
-                        ))}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>Quality Gates</span>
+                    <span style={{ 
+                      fontSize: '13px', 
+                      fontFamily: 'JetBrains Mono', 
+                      color: passedGates === gateResults.length ? '#00ff88' : '#fbbf24', 
+                      fontWeight: 700 
+                    }}>
+                      {passedGates}/{gateResults.length}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {gateResults.map((gate, i) => (
+                      <div key={i} style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        background: gate.passed ? 'rgba(0, 255, 136, 0.05)' : 'rgba(239, 68, 68, 0.05)',
+                        border: `1px solid ${gate.passed ? 'rgba(0, 255, 136, 0.1)' : 'rgba(239, 68, 68, 0.1)'}`,
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ color: gate.passed ? '#00ff88' : '#ef4444', fontSize: '14px' }}>
+                            {gate.passed ? '✓' : '✗'}
+                          </span>
+                          <span style={{ fontSize: '13px', color: '#e4e4e7' }}>{gate.name}</span>
+                        </div>
+                        <span style={{ fontSize: '11px', color: '#71717a' }}>{gate.reason}</span>
                       </div>
-                      <span style={{ fontSize: '14px', color: '#71717a' }}>Quality Checks</span>
-                    </div>
-                    <span style={{ fontSize: '13px', fontFamily: 'JetBrains Mono', color: '#00ff88', fontWeight: 700 }}>7/7</span>
+                    ))}
                   </div>
                 </div>
               </>
