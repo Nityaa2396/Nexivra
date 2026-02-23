@@ -1,0 +1,415 @@
+id: "cold-email"
+name: "Cold Email"
+description: "Direct email when you find recruiter's address. Short, specific, no spam triggers."
+category: "first-contact"
+version: "2.0"
+
+inputs:
+  - id: "recipient_name"
+    type: "text"
+    label: "Recipient's name"
+    placeholder: "Sarah Chen"
+    required: true
+
+  - id: "recipient_title"
+    type: "text"
+    label: "Their title"
+    placeholder: "Senior Technical Recruiter"
+    required: true
+
+  - id: "company"
+    type: "text"
+    label: "Company"
+    placeholder: "Stripe"
+    required: true
+
+  - id: "target_role"
+    type: "text"
+    label: "Role you're targeting"
+    placeholder: "Senior Software Engineer"
+    required: true
+
+  - id: "your_experience"
+    type: "textarea"
+    label: "Your relevant experience (be specific with numbers)"
+    placeholder: |
+      • 6 years backend engineering
+      • Scaled payment systems to 10M+ transactions/day
+      • Led migration from monolith to microservices
+      • Reduced p99 latency by 40%
+    required: true
+    help: "Include metrics. We'll pick the strongest one."
+
+  - id: "why_company"
+    type: "textarea"
+    label: "Why this company specifically?"
+    placeholder: "Stripe's API design philosophy influenced how I architect systems. Particularly interested in their work on fraud detection..."
+    required: true
+    help: "Be specific. Generic = spam folder."
+
+  - id: "how_found"
+    type: "select"
+    label: "How did you find their email?"
+    options:
+      - value: "company_website"
+        label: "Company website"
+      - value: "linkedin"
+        label: "LinkedIn profile"
+      - value: "referral"
+        label: "Referral from someone"
+      - value: "conference"
+        label: "Met at event/conference"
+      - value: "hunter"
+        label: "Email finder tool"
+    required: true
+
+steps:
+  - id: "extract_credentials"
+    name: "Extract strongest credential"
+    prompt: |
+      Extract the single most impressive and relevant credential for this role.
+      
+      TARGET ROLE: {{target_role}} at {{company}}
+      
+      USER'S EXPERIENCE:
+      {{your_experience}}
+      
+      Return JSON:
+      {
+        "power_stat": "the single most impressive metric/achievement",
+        "relevance_to_role": "why this matters for the target role",
+        "years_if_mentioned": "X years" or null
+      }
+      
+      Pick ONE stat that would make a recruiter want to read more.
+    outputKey: "credentials"
+    gates: []
+
+  - id: "generate_subject"
+    name: "Generate subject line"
+    prompt: |
+      Write an email subject line that gets opened, not deleted.
+      
+      TARGET: {{target_role}} at {{company}}
+      POWER STAT: {{credentials.power_stat}}
+      
+      ---
+      
+      WINNING SUBJECT LINES:
+      - Lead with relevance: "{{target_role}} - [specific credential]"
+      - Mutual connection: "Referred by [Name] for {{target_role}}"
+      - Specific interest: "Re: {{company}}'s [specific initiative]"
+      
+      SPAM TRIGGERS (avoid):
+      - "Job Application" (boring)
+      - "Interested in opportunities" (generic)
+      - "Please review my resume" (demanding)
+      - ALL CAPS or excessive punctuation
+      - "Quick question" (clickbait)
+      
+      ---
+      
+      CONSTRAINTS:
+      - Max 50 characters
+      - No clickbait
+      - Professional but not boring
+      
+      Return ONLY the subject line.
+    outputKey: "subject"
+    gates:
+      - "subject_length_gate"
+      - "subject_spam_gate"
+
+  - id: "generate_body"
+    name: "Generate email body"
+    prompt: |
+      Write a cold email that gets responses, not deleted.
+      
+      TO: {{recipient_name}} ({{recipient_title}}) at {{company}}
+      RE: {{target_role}}
+      FOUND VIA: {{how_found}}
+      
+      POWER STAT: {{credentials.power_stat}}
+      
+      WHY THIS COMPANY:
+      {{why_company}}
+      
+      FULL EXPERIENCE:
+      {{your_experience}}
+      
+      ---
+      
+      EMAIL STRUCTURE (3 short paragraphs max):
+      
+      PARAGRAPH 1 - HOOK + CREDIBILITY (2-3 sentences):
+      - If referral: Lead with the name
+      - If not: Lead with your power stat
+      - Immediately relevant to the role
+      - NOT "I'm writing to express my interest..."
+      
+      PARAGRAPH 2 - WHY THEM (1-2 sentences):
+      - Specific reason for THIS company
+      - Reference something real (product, mission, recent news)
+      - NOT "I've always admired..."
+      
+      PARAGRAPH 3 - SOFT ASK (1 sentence):
+      - Low-friction request
+      - "Would a 15-minute call make sense?"
+      - "Happy to share more context if helpful"
+      - NOT "Please review my attached resume"
+      
+      SIGN-OFF:
+      - Just first name
+      - No "Best regards" or "Sincerely"
+      
+      ---
+      
+      HARD CONSTRAINTS:
+      - MAXIMUM 150 words (4-6 sentences total)
+      - NO "Dear [Name]" (too formal)
+      - NO "I hope this email finds you well" (spam signal)
+      - NO attachments mention (don't send resume cold)
+      - NO multiple paragraphs about yourself
+      - NO listing multiple achievements (pick ONE)
+      - MUST include your specific power stat
+      - MUST include specific company reason
+      
+      ANTI-SPAM RULES:
+      - Use contractions (I'm, you're, it's)
+      - Sound like a human, not a template
+      - Short sentences
+      - No buzzwords (passionate, driven, excited)
+      
+      ---
+      
+      Return ONLY the email body (no subject, no signature except first name).
+    outputKey: "body"
+    gates:
+      - "body_length_gate"
+      - "spam_gate"
+      - "evidence_gate"
+      - "tone_gate"
+      - "cta_gate"
+      - "anti_template_gate"
+
+gates:
+  subject_length_gate:
+    type: "rule"
+    priority: 1
+    check: "character_count"
+    max: 50
+    onFail: "rewrite"
+    maxRetries: 2
+
+  subject_spam_gate:
+    type: "llm_judge"
+    priority: 2
+    prompt: |
+      Check if this subject line triggers spam filters or gets ignored.
+      
+      SUBJECT: "{{subject}}"
+      
+      SPAM SIGNALS:
+      - "Job Application" or "Application for"
+      - "Please" or "Kindly"
+      - "Opportunity" standalone
+      - All caps words
+      - Excessive punctuation (!!! or ???)
+      - "Quick question" clickbait
+      - "Interested in" 
+      
+      GOOD SIGNALS:
+      - Specific role mentioned
+      - Concrete credential
+      - Professional tone
+      - Would stand out in inbox
+      
+      Return JSON:
+      {
+        "passed": true/false,
+        "spam_score": 0-10,
+        "issues": ["list"],
+        "reason": "assessment"
+      }
+      
+      Pass if spam_score < 4
+    onFail: "rewrite"
+    maxRetries: 2
+
+  body_length_gate:
+    type: "rule"
+    priority: 3
+    check: "word_count"
+    max: 150
+    onFail: "rewrite"
+    maxRetries: 3
+
+  spam_gate:
+    type: "llm_judge"
+    priority: 4
+    prompt: |
+      Check if this email would trigger spam filters or feel like spam.
+      
+      EMAIL: "{{body}}"
+      
+      SPAM SIGNALS:
+      - "Dear [Name]" or "Dear Hiring Manager"
+      - "I hope this email finds you well"
+      - "I am writing to express my interest"
+      - "I believe I would be a great fit"
+      - "Please find attached"
+      - Excessive formality
+      - Buzzwords: passionate, driven, excited, thrilled
+      - Multiple exclamation marks
+      - Sounds mass-sent
+      
+      Return JSON:
+      {
+        "passed": true/false,
+        "spam_score": 0-10,
+        "spam_phrases": ["list"],
+        "reason": "assessment"
+      }
+      
+      Pass if spam_score < 4
+    onFail: "rewrite"
+    maxRetries: 2
+
+  evidence_gate:
+    type: "llm_judge"
+    priority: 5
+    prompt: |
+      Verify all claims in this email against user inputs.
+      
+      EMAIL: "{{body}}"
+      
+      USER'S EXPERIENCE:
+      {{your_experience}}
+      
+      USER'S COMPANY REASON:
+      {{why_company}}
+      
+      EXTRACTED CREDENTIALS:
+      {{credentials}}
+      
+      Check every factual claim has a source.
+      
+      Return JSON:
+      {
+        "passed": true/false,
+        "evidence": [
+          {
+            "claim": "claim",
+            "source_field": "field or null",
+            "verified": true/false,
+            "reason": "explanation"
+          }
+        ],
+        "reason": "overall"
+      }
+    onFail: "rewrite"
+    maxRetries: 2
+
+  tone_gate:
+    type: "llm_judge"
+    priority: 6
+    prompt: |
+      Evaluate email tone for professional but human communication.
+      
+      EMAIL: "{{body}}"
+      
+      FAIL IF:
+      - Desperate or pleading
+      - Overly formal / stiff
+      - Arrogant / overselling
+      - Robotic / template-feeling
+      
+      PASS IF:
+      - Confident but respectful
+      - Human and natural
+      - Peer-to-peer tone
+      - Clear and direct
+      
+      Return JSON:
+      {
+        "passed": true/false,
+        "tone": "confident|desperate|formal|arrogant|robotic|natural",
+        "issues": ["list"],
+        "reason": "assessment"
+      }
+    onFail: "rewrite"
+    maxRetries: 1
+
+  cta_gate:
+    type: "llm_judge"
+    priority: 7
+    prompt: |
+      Evaluate the call-to-action in this email.
+      
+      EMAIL: "{{body}}"
+      
+      GOOD CTA:
+      - Low friction: "Would a brief call make sense?"
+      - Optional feel: "Happy to share more if helpful"
+      - Specific: "15 minutes this week?"
+      
+      BAD CTA:
+      - Demanding: "Please review and respond"
+      - Presumptuous: "Looking forward to speaking"
+      - No CTA: Just ends
+      - Multiple asks
+      - Asking for too much: "Would love an hour to discuss"
+      
+      Return JSON:
+      {
+        "passed": true/false,
+        "cta_text": "the CTA",
+        "cta_quality": "soft|demanding|missing|presumptuous",
+        "reason": "assessment"
+      }
+    onFail: "rewrite"
+    maxRetries: 1
+
+  anti_template_gate:
+    type: "llm_judge"
+    priority: 8
+    prompt: |
+      Check if this email sounds human or AI-generated.
+      
+      EMAIL: "{{body}}"
+      
+      TEMPLATE SIGNALS:
+      - "I am confident that my skills"
+      - "I believe I would be a great fit"
+      - "I am excited about the opportunity"
+      - "I would welcome the chance"
+      - Perfect grammar, no contractions
+      - Every sentence same structure
+      - Could be sent to any company
+      
+      HUMAN SIGNALS:
+      - Contractions (I'm, you're)
+      - Varied sentence length
+      - Specific details
+      - Personality comes through
+      - Company-specific content
+      
+      Return JSON:
+      {
+        "passed": true/false,
+        "human_score": 1-10,
+        "template_phrases": ["list"],
+        "reason": "assessment"
+      }
+      
+      Pass if human_score >= 7
+    onFail: "rewrite"
+    maxRetries: 1
+
+output:
+  format: "email"
+  fields:
+    - "subject"
+    - "body"
+  showEvidenceMap: true
+  showGateScores: true

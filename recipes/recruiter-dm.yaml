@@ -1,0 +1,416 @@
+id: "recruiter-dm"
+name: "Recruiter LinkedIn DM"
+description: "Cold outreach that actually gets replies. Optimized for LinkedIn's 300-char limit with proven winning formula."
+category: "first-contact"
+version: "2.1"
+
+inputs:
+  - id: "job_posting"
+    type: "textarea"
+    label: "Paste the job posting (title + key requirements)"
+    placeholder: "Senior Product Manager at Stripe - 5+ years PM experience, fintech background, payment systems..."
+    required: true
+    help: "Include role title, company, and 2-3 must-have requirements"
+
+  - id: "your_experience"
+    type: "textarea"
+    label: "Your relevant experience (be specific with numbers)"
+    placeholder: |
+      • 12 years clinical sales in diagnostics
+      • MBA from UT Austin
+      • Drove 25% profitable growth across NA
+      • Exceeded $15M revenue targets
+      • Power BI, Excel, SFDC analytics
+    required: true
+    help: "Include: years of experience, degrees, certifications, metrics, tools. We'll pick the strongest."
+
+  - id: "company_research"
+    type: "textarea"
+    label: "Why this company? (1-2 specific things)"
+    placeholder: "Their acute care testing mission aligns with my diagnostics background. Impressed by their 'best teams win' culture."
+    required: false
+    help: "Specific > generic. 'Patient care mission' beats 'great company'"
+
+  - id: "connection_context"
+    type: "select"
+    label: "Connection context"
+    options:
+      - value: "cold"
+        label: "Cold (no prior contact)"
+      - value: "mutual_connection"
+        label: "Mutual connections"
+      - value: "engaged_content"
+        label: "Engaged with their content"
+      - value: "same_industry"
+        label: "Same industry background"
+    required: true
+
+  - id: "tone"
+    type: "select"
+    label: "Tone"
+    options:
+      - value: "confident_peer"
+        label: "Confident peer (recommended)"
+      - value: "warm_professional"
+        label: "Warm professional"
+      - value: "direct"
+        label: "Direct and concise"
+    default: "confident_peer"
+    required: true
+
+steps:
+  - id: "extract_power_stats"
+    name: "Extract strongest credentials"
+    prompt: |
+      Extract the strongest credentials from the USER'S EXPERIENCE ONLY.
+      
+      USER'S EXPERIENCE (this is what they ACTUALLY have):
+      {{your_experience}}
+      
+      JOB REQUIREMENTS (this is what the job WANTS - NOT what user has):
+      {{job_posting}}
+      
+      CRITICAL RULES:
+      1. ONLY extract what appears in USER'S EXPERIENCE
+      2. NEVER assume user has a skill just because the JD requires it
+      3. If user doesn't mention an industry (e.g., "B2B SaaS", "fintech"), leave industry_match as null
+      4. If user doesn't mention years, leave years_experience as null
+      5. If user has NO relevant experience for this role, say so honestly
+      
+      Return JSON:
+      {
+        "years_experience": "X years" or null (ONLY if user explicitly stated),
+        "degree": "MBA from X" or "BS in X" or null (ONLY if user explicitly stated),
+        "top_metric": "the most impressive NUMBER from user's experience" or null,
+        "relevant_skill": "most relevant skill user ACTUALLY mentioned" or null,
+        "industry_match": "industry user ACTUALLY mentioned working in" or null,
+        "experience_gap": "honest assessment if user lacks key requirements"
+      }
+      
+      BE STRICT. If in doubt, use null. We cannot put words in the user's mouth.
+    outputKey: "credentials"
+    gates: []
+
+  - id: "generate_dm"
+    name: "Generate DM"
+    prompt: |
+      Write a LinkedIn connection request that gets replies.
+      
+      CREDENTIALS EXTRACTED (verified from user's experience):
+      {{credentials}}
+      
+      COMPANY RESEARCH:
+      {{company_research}}
+      
+      CONNECTION CONTEXT: {{connection_context}}
+      TONE: {{tone}}
+      
+      ---
+      
+      CRITICAL ANTI-HALLUCINATION RULES:
+      
+      1. ONLY use facts from credentials and company_research
+      2. If credentials.top_metric is null, DO NOT invent a metric
+      3. If credentials.industry_match is null, DO NOT add an industry (no "B2B SaaS", "fintech", etc.)
+      4. If credentials.years_experience is null, DO NOT mention years
+      5. If user lacks experience, acknowledge the transition/interest honestly
+      6. NEVER pull skills from the JD and pretend they're user's experience
+      
+      ---
+      
+      WINNING FORMULA (follow exactly):
+      
+      1. HOOK (first 8-10 words) - Pattern interrupt
+         - If mutual_connection: "I noticed we share connections in [industry IF user mentioned it]..."
+         - If engaged_content: "Your post on [topic] caught my attention..."
+         - If same_industry: "Fellow [industry IF user mentioned it] professional here..."
+         - If cold: Lead with credibility or genuine interest
+      
+      2. CREDIBILITY (1 power stat) - ONLY if user has one
+         - Use credentials.top_metric if available
+         - If no metric, use qualitative strength
+         - If career changer, acknowledge the pivot honestly
+      
+      3. RELEVANCE (company-specific)
+         - Reference specific company detail from company_research
+         - Show genuine interest, not fake expertise
+      
+      4. CTA (soft question)
+         - "Would you be open to connecting?"
+         - "Open to a brief chat?"
+      
+      ---
+      
+      HARD CONSTRAINTS:
+      - MAXIMUM 270 characters
+      - NO invented metrics or percentages
+      - NO invented industry/platform details
+      - NO skills from JD that user didn't mention
+      - If user is career changer, be honest about it
+      
+      ---
+      
+      Return ONLY the message. Max 270 characters.
+    outputKey: "dm_draft"
+    gates:
+      - "length_gate"
+      - "evidence_gate"
+      - "hook_gate"
+      - "credential_gate"
+      - "tone_gate"
+      - "cta_gate"
+      - "anti_template_gate"
+
+gates:
+  length_gate:
+    type: "rule"
+    priority: 1
+    check: "character_count"
+    max: 280
+    onFail: "rewrite"
+    maxRetries: 3
+    failMessage: "Must be under 280 characters for LinkedIn connection requests"
+
+  evidence_gate:
+    type: "llm_judge"
+    priority: 2
+    prompt: |
+      STRICTLY verify every factual claim in this message.
+      
+      MESSAGE TO VERIFY:
+      "{{dm_draft}}"
+      
+      ---
+      
+      SOURCE DOCUMENTS (the ONLY places claims can come from):
+      
+      1. USER'S EXPERIENCE:
+      {{your_experience}}
+      
+      2. USER'S COMPANY RESEARCH:
+      {{company_research}}
+      
+      3. EXTRACTED CREDENTIALS:
+      {{credentials}}
+      
+      ---
+      
+      VERIFICATION RULES:
+      
+      For EACH factual claim in the message, check:
+      
+      1. METRICS/NUMBERS: Must appear EXACTLY in user's experience
+         - "25% growth" → must see "25%" in experience
+         - "5 years" → must see "5 years" in experience
+         - If message says "50% improvement" but user said "improved" → HALLUCINATED
+      
+      2. SKILLS/TECHNOLOGIES: Must be EXPLICITLY mentioned by user
+         - If message says "A/B testing" but user only said "analytics" → HALLUCINATED
+         - If message says "Python" but user didn't mention Python → HALLUCINATED
+      
+      3. INDUSTRY/PLATFORM: Must be EXPLICITLY stated by user
+         - If message says "B2B SaaS" but user didn't mention industry → HALLUCINATED
+         - If message says "fintech" but user just said "marketing" → HALLUCINATED
+      
+      4. JOB DESCRIPTION IS NOT A SOURCE:
+         - Skills in JD are what the JOB wants, NOT what user has
+         - NEVER verify a claim against the JD
+         - If a skill appears in JD but not in user experience → HALLUCINATED
+      
+      5. COMPANY FACTS: Must come from user's company_research
+         - Company details user researched → OK
+         - Invented company facts → HALLUCINATED
+      
+      ---
+      
+      Return JSON:
+      {
+        "passed": true/false (FALSE if ANY claim is unverified),
+        "evidence": [
+          {
+            "claim": "exact claim from message",
+            "source_field": "your_experience|company_research|credentials|NONE",
+            "source_quote": "exact matching text from source" or null,
+            "verified": true/false,
+            "reason": "why verified or what's wrong"
+          }
+        ],
+        "hallucinations_found": ["list of hallucinated claims"],
+        "reason": "overall assessment"
+      }
+      
+      BE STRICT. One hallucination = passed: false. User will be asked about these claims in interviews.
+    onFail: "rewrite"
+    maxRetries: 3
+
+  hook_gate:
+    type: "llm_judge"
+    priority: 3
+    prompt: |
+      Evaluate the opening hook of this LinkedIn message.
+      
+      MESSAGE: "{{dm_draft}}"
+      
+      DEATH SENTENCES (instant fail):
+      - Starts with "I'm reaching out..."
+      - Starts with "I saw your posting..."
+      - Starts with "I'm writing to express..."
+      - Starts with "I hope this message finds you..."
+      - Starts with "Dear [Name]" or "Hello [Name]"
+      
+      GOOD HOOKS:
+      - Pattern interrupt (unexpected opening)
+      - Shared context (mutual connections, same industry)
+      - Lead with credibility (number or achievement)
+      - Direct but not salesy
+      
+      Return JSON:
+      {
+        "passed": true/false,
+        "hook_text": "first 10 words",
+        "hook_type": "pattern_interrupt|shared_context|credibility_lead|death_sentence|generic",
+        "reason": "why it works or doesn't"
+      }
+      
+      Fail if hook_type is "death_sentence" or "generic".
+    onFail: "rewrite"
+    maxRetries: 2
+
+  credential_gate:
+    type: "llm_judge"
+    priority: 4
+    prompt: |
+      Check if credentials are used appropriately (not invented).
+      
+      MESSAGE: "{{dm_draft}}"
+      
+      EXTRACTED CREDENTIALS (what user ACTUALLY has):
+      {{credentials}}
+      
+      USER'S FULL EXPERIENCE:
+      {{your_experience}}
+      
+      CHECK:
+      1. Any metric in message must match credentials or experience
+      2. Any industry mention must match what user stated
+      3. If user has no strong metric, message should NOT invent one
+      4. If user is career changer, message should be honest about it
+      
+      Return JSON:
+      {
+        "passed": true/false,
+        "credential_used": "the credential/metric used" or "none",
+        "matches_user_input": true/false,
+        "invented_details": ["list of anything that seems invented"],
+        "reason": "assessment"
+      }
+      
+      FAIL if invented_details is not empty.
+    onFail: "rewrite"
+    maxRetries: 2
+
+  tone_gate:
+    type: "llm_judge"
+    priority: 5
+    prompt: |
+      Evaluate tone for peer-to-peer professional communication.
+      
+      MESSAGE: "{{dm_draft}}"
+      TARGET TONE: {{tone}}
+      
+      FAIL IF:
+      - Desperate: "I really need", "please give me a chance", "I would be so grateful"
+      - Supplicant: "I hope you'll consider", "if you have time", excessive hedging
+      - Arrogant: "I'm the perfect candidate", "you won't find better"
+      - Robotic: No personality, sounds like template
+      - Salesy: Pushy, multiple CTAs, pressure tactics
+      
+      PASS IF:
+      - Confident but not arrogant
+      - Professional but warm
+      - Peer-to-peer (not begging)
+      - Natural language (contractions OK)
+      
+      Return JSON:
+      {
+        "passed": true/false,
+        "tone_detected": "confident_peer|desperate|supplicant|arrogant|robotic|salesy",
+        "issues": ["list of issues"],
+        "reason": "assessment"
+      }
+    onFail: "rewrite"
+    maxRetries: 1
+
+  cta_gate:
+    type: "llm_judge"
+    priority: 6
+    prompt: |
+      Evaluate the call-to-action.
+      
+      MESSAGE: "{{dm_draft}}"
+      
+      GOOD CTA:
+      - Soft question: "Would you be open to...?"
+      - Easy yes: "Open to connecting?"
+      - Low commitment: "Brief chat?"
+      
+      BAD CTA:
+      - Presumptuous: "When can we talk?", "Looking forward to our call"
+      - No CTA: Message just ends
+      - Multiple asks: More than one request
+      - Demanding: "Please review my resume", "I'd like to schedule..."
+      
+      Return JSON:
+      {
+        "passed": true/false,
+        "cta_text": "the CTA" or "none",
+        "cta_type": "soft_question|easy_yes|presumptuous|demanding|none",
+        "reason": "assessment"
+      }
+      
+      Pass if cta_type is "soft_question" or "easy_yes"
+    onFail: "rewrite"
+    maxRetries: 1
+
+  anti_template_gate:
+    type: "llm_judge"
+    priority: 7
+    prompt: |
+      Check if this message sounds human-written or AI-generated template.
+      
+      MESSAGE: "{{dm_draft}}"
+      
+      TEMPLATE RED FLAGS:
+      - "I believe I would be a great fit"
+      - "I am confident that my skills"
+      - "I am excited about the opportunity"
+      - "I would welcome the chance"
+      - "Thrilled to see" / "Excited to discover"
+      - Perfect grammar with no contractions
+      - Every sentence starts with "I"
+      - Generic company praise without specifics
+      
+      HUMAN SIGNALS:
+      - Natural contractions (I'm, you're, it's)
+      - Varied sentence structure
+      - Specific details (not just buzzwords)
+      - Personality shows through
+      - Slight informality appropriate for LinkedIn
+      
+      Return JSON:
+      {
+        "passed": true/false,
+        "template_phrases_found": ["list"],
+        "human_score": 1-10,
+        "reason": "assessment"
+      }
+      
+      Pass if human_score >= 7 and no major template phrases found.
+    onFail: "rewrite"
+    maxRetries: 1
+
+output:
+  format: "text"
+  maxLength: 280
+  showEvidenceMap: true
+  showGateScores: true

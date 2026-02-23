@@ -1,0 +1,303 @@
+id: "recruiter-comment"
+name: "Comment on Recruiter Post"
+description: "Thoughtful comment to get on their radar without being salesy. Build presence, not pitch."
+category: "presence"
+version: "2.0"
+
+inputs:
+  - id: "post_content"
+    type: "textarea"
+    label: "Paste the recruiter's post (or summarize key points)"
+    placeholder: "We're hiring 5 senior engineers this quarter. Looking for people who thrive in ambiguity and can own projects end-to-end..."
+    required: true
+    help: "Include enough context so your comment makes sense"
+
+  - id: "post_type"
+    type: "select"
+    label: "What kind of post is it?"
+    options:
+      - value: "hiring"
+        label: "Hiring announcement / Job post"
+      - value: "industry_insight"
+        label: "Industry insight or opinion"
+      - value: "company_news"
+        label: "Company news or achievement"
+      - value: "advice"
+        label: "Career advice or tips"
+      - value: "question"
+        label: "They asked a question"
+    required: true
+
+  - id: "your_angle"
+    type: "textarea"
+    label: "Your perspective or relevant experience"
+    placeholder: "I've seen this pattern at my company too... / This resonates because in my experience... / One thing I'd add is..."
+    required: true
+    help: "What can YOU add to the conversation? Don't just agree."
+
+  - id: "target_role"
+    type: "text"
+    label: "Role you're interested in (if hiring post)"
+    placeholder: "Senior Software Engineer"
+    required: false
+    help: "Leave blank if not a hiring post"
+
+  - id: "your_experience"
+    type: "textarea"
+    label: "Your relevant experience (for context)"
+    required: true
+    help: "We'll use this to make your comment credible, not to pitch"
+
+steps:
+  - id: "analyze_post"
+    name: "Analyze post for comment angle"
+    prompt: |
+      Analyze this LinkedIn post to find the best comment angle.
+      
+      POST:
+      {{post_content}}
+      
+      POST TYPE: {{post_type}}
+      
+      USER'S ANGLE:
+      {{your_angle}}
+      
+      USER'S EXPERIENCE:
+      {{your_experience}}
+      
+      Return JSON:
+      {
+        "main_topic": "core topic of the post",
+        "commenter_opportunity": "what kind of comment would add value",
+        "avoid": "what would seem salesy or off-topic",
+        "connection_point": "how user's experience relates authentically"
+      }
+    outputKey: "post_analysis"
+    gates: []
+
+  - id: "generate_comment"
+    name: "Generate comment"
+    prompt: |
+      Write a LinkedIn comment that adds value and gets noticed.
+      
+      POST ANALYSIS:
+      {{post_analysis}}
+      
+      POST TYPE: {{post_type}}
+      USER'S ANGLE: {{your_angle}}
+      USER'S EXPERIENCE: {{your_experience}}
+      TARGET ROLE: {{target_role}}
+      
+      ---
+      
+      COMMENT STRATEGY BY POST TYPE:
+      
+      IF HIRING POST:
+      - Share relevant insight about the role/industry
+      - DO NOT pitch yourself ("I'm interested!", "I have 5 years...")
+      - DO NOT ask about applying ("How do I apply?", "Is remote OK?")
+      - Show you understand the challenges of the role
+      - Let them click your profile out of curiosity
+      
+      IF INDUSTRY INSIGHT:
+      - Add your perspective with a specific example
+      - Agree AND extend (don't just say "Great post!")
+      - Share a contrarian or nuanced view if genuine
+      
+      IF COMPANY NEWS:
+      - Congratulate briefly, then add substance
+      - Connect to broader industry trend
+      - Ask a thoughtful question
+      
+      IF ADVICE POST:
+      - Share how you've applied similar advice
+      - Add a complementary tip
+      - Respectfully offer alternative view
+      
+      IF QUESTION:
+      - Answer directly and specifically
+      - Draw from real experience
+      - Keep it concise
+      
+      ---
+      
+      COMMENT FORMULA:
+      1. HOOK: First line that shows you read the post (reference specific point)
+      2. VALUE: Your insight, experience, or question (1-2 sentences)
+      3. OPTIONAL: Soft engagement prompt ("Curious if others see this too")
+      
+      ---
+      
+      HARD CONSTRAINTS:
+      - MAXIMUM 300 characters (engagement drops after this)
+      - NO self-promotion ("I'm looking for...", "I have X years...")
+      - NO generic praise ("Great post!", "Love this!", "So true!")
+      - NO asking about the job ("Are you still hiring?", "Can I apply?")
+      - NO emojis overload (max 1 if any)
+      - MUST reference something specific from the post
+      - MUST add value (insight, question, or experience)
+      
+      ANTI-PITCH RULE:
+      If this is a hiring post, your comment should make them think
+      "This person gets it" NOT "This person wants a job"
+      
+      ---
+      
+      Return ONLY the comment. Max 300 characters.
+    outputKey: "comment_draft"
+    gates:
+      - "length_gate"
+      - "pitch_detector_gate"
+      - "value_gate"
+      - "specificity_gate"
+      - "evidence_gate"
+
+gates:
+  length_gate:
+    type: "rule"
+    priority: 1
+    check: "character_count"
+    max: 300
+    onFail: "rewrite"
+    maxRetries: 3
+
+  pitch_detector_gate:
+    type: "llm_judge"
+    priority: 2
+    prompt: |
+      Detect if this comment is secretly a job pitch disguised as engagement.
+      
+      COMMENT: "{{comment_draft}}"
+      POST TYPE: {{post_type}}
+      
+      PITCH SIGNALS (instant fail):
+      - "I'm interested in this role"
+      - "I have X years of experience"
+      - "I'd love to apply"
+      - "Is this position still open?"
+      - "I'm currently looking for..."
+      - "My background includes..."
+      - Listing qualifications
+      - Asking how to apply
+      - Mentioning job search
+      
+      GENUINE ENGAGEMENT:
+      - Shares insight about the topic
+      - Asks thoughtful question about content
+      - Adds perspective from experience (without making it about getting hired)
+      - Engages with the IDEAS not the opportunity
+      
+      Return JSON:
+      {
+        "passed": true/false,
+        "pitch_score": 0-10 (0=genuine, 10=obvious pitch),
+        "pitch_signals": ["list of signals found"],
+        "reason": "assessment"
+      }
+      
+      FAIL if pitch_score > 3
+    onFail: "rewrite"
+    maxRetries: 2
+
+  value_gate:
+    type: "llm_judge"
+    priority: 3
+    prompt: |
+      Does this comment add genuine value to the conversation?
+      
+      ORIGINAL POST: "{{post_content}}"
+      COMMENT: "{{comment_draft}}"
+      
+      NO VALUE (fail):
+      - "Great post!" / "Love this!" / "So true!"
+      - Generic agreement without substance
+      - Flattery without insight
+      - Off-topic tangent
+      - Just asking basic questions
+      
+      HIGH VALUE (pass):
+      - Adds new perspective
+      - Shares relevant experience
+      - Asks question that advances discussion
+      - Offers complementary insight
+      - Respectful counterpoint
+      
+      Return JSON:
+      {
+        "passed": true/false,
+        "value_type": "insight|experience|question|counterpoint|generic|flattery",
+        "value_score": 1-10,
+        "reason": "assessment"
+      }
+      
+      Pass if value_score >= 6
+    onFail: "rewrite"
+    maxRetries: 2
+
+  specificity_gate:
+    type: "llm_judge"
+    priority: 4
+    prompt: |
+      Check if this comment references something specific from the post.
+      
+      ORIGINAL POST: "{{post_content}}"
+      COMMENT: "{{comment_draft}}"
+      
+      GENERIC (fail):
+      - Could apply to any post on this topic
+      - Doesn't reference specific points made
+      - Cookie-cutter response
+      
+      SPECIFIC (pass):
+      - References a particular point from the post
+      - Responds to a specific claim or question
+      - Shows they actually read it
+      
+      Return JSON:
+      {
+        "passed": true/false,
+        "post_reference_found": "specific reference or null",
+        "specificity_score": 1-10,
+        "reason": "assessment"
+      }
+      
+      Pass if specificity_score >= 6
+    onFail: "rewrite"
+    maxRetries: 1
+
+  evidence_gate:
+    type: "llm_judge"
+    priority: 5
+    prompt: |
+      Verify any claims about the commenter's experience.
+      
+      COMMENT: "{{comment_draft}}"
+      
+      USER'S STATED EXPERIENCE:
+      {{your_experience}}
+      
+      USER'S ANGLE:
+      {{your_angle}}
+      
+      Check any claims about experience are supported by inputs.
+      
+      Return JSON:
+      {
+        "passed": true/false,
+        "evidence": [
+          {
+            "claim": "claim text",
+            "source_field": "your_experience|your_angle|null",
+            "verified": true/false,
+            "reason": "explanation"
+          }
+        ],
+        "reason": "overall"
+      }
+    onFail: "flag"
+
+output:
+  format: "text"
+  maxLength: 300
+  showEvidenceMap: true
+  showGateScores: true

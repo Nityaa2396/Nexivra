@@ -1,0 +1,439 @@
+{
+  "version": "1.0",
+  "description": "Comprehensive test cases for Nexivra vs competitors. Designed to stress-test hallucination, quality, and edge cases.",
+  "test_cases": [
+    {
+      "id": "TC001",
+      "name": "Career Changer - No Direct Experience",
+      "difficulty": "HARD",
+      "recipe": "recruiter-dm",
+      "challenge": "User switching careers with no direct experience in target field. AI might hallucinate relevant experience.",
+      "inputs": {
+        "job_posting": "Senior Data Scientist at Netflix. Requirements: 5+ years ML experience, Python, TensorFlow, recommendation systems, A/B testing at scale.",
+        "your_experience": "8 years marketing analytics at CPG companies. Expert in Excel, Tableau, basic SQL. Led customer segmentation projects. Recently completed Google Data Analytics certificate. No ML or Python experience.",
+        "company_research": "Netflix's recommendation engine drives 80% of content watched. Fascinated by how they personalize at scale.",
+        "connection_context": "cold",
+        "tone": "confident_peer"
+      },
+      "watch_for": [
+        "Should NOT claim ML experience",
+        "Should NOT claim Python expertise", 
+        "Should NOT invent years of data science",
+        "Should highlight transferable skills honestly",
+        "Should acknowledge the career pivot"
+      ]
+    },
+    {
+      "id": "TC002",
+      "name": "Overqualified Executive",
+      "difficulty": "HARD",
+      "recipe": "recruiter-dm",
+      "challenge": "User is overqualified. AI might oversell or sound arrogant.",
+      "inputs": {
+        "job_posting": "Product Manager at Series A startup. Looking for 3-5 years PM experience. Fast-paced environment, wear many hats.",
+        "your_experience": "VP of Product at Fortune 500 for 12 years. Managed 50-person product org. Led $2B product portfolio. Looking to join smaller company for more impact.",
+        "company_research": "Love their mission to democratize financial tools. Small team, big ambition reminds me of early-career energy.",
+        "connection_context": "mutual_connection",
+        "tone": "warm_professional"
+      },
+      "watch_for": [
+        "Should NOT sound like they're slumming it",
+        "Should NOT list all impressive achievements",
+        "Should explain WHY startup (not just credentials)",
+        "Tone should be humble, not condescending"
+      ]
+    },
+    {
+      "id": "TC003",
+      "name": "Employment Gap",
+      "difficulty": "HARD",
+      "recipe": "recruiter-dm",
+      "challenge": "User has significant gap. AI might try to explain/excuse it.",
+      "inputs": {
+        "job_posting": "Senior Software Engineer at Shopify. 5+ years experience, Ruby/Rails, distributed systems.",
+        "your_experience": "7 years software engineering before 2020. Ruby, Rails, PostgreSQL. Built payment systems processing $50M/month. Last role ended March 2020. Spent 3 years as primary caregiver for ill parent. Now ready to return.",
+        "company_research": "Shopify's merchant-first approach aligns with my belief that tools should empower small businesses.",
+        "connection_context": "same_industry",
+        "tone": "direct"
+      },
+      "watch_for": [
+        "Should NOT explain the gap in a DM",
+        "Should NOT apologize or sound defensive",
+        "Should focus on relevant experience",
+        "Should sound confident, not uncertain"
+      ]
+    },
+    {
+      "id": "TC004",
+      "name": "Weak Metrics - Vague Experience",
+      "difficulty": "HARD",
+      "recipe": "recruiter-dm",
+      "challenge": "User provides vague experience. AI might invent specific numbers.",
+      "inputs": {
+        "job_posting": "Growth Marketing Manager at Airbnb. Need someone who's driven significant user acquisition.",
+        "your_experience": "5 years in digital marketing. Ran campaigns that increased signups. Managed social media accounts with good engagement. Worked on SEO projects that improved rankings. Team player, fast learner.",
+        "company_research": "Airbnb's recent focus on experiences and long-term stays opens interesting marketing angles.",
+        "connection_context": "engaged_content",
+        "tone": "confident_peer"
+      },
+      "watch_for": [
+        "Should NOT invent percentages (e.g., '50% increase')",
+        "Should NOT add specific numbers not provided",
+        "Should work with vague info honestly",
+        "May need to use qualitative differentiators"
+      ]
+    },
+    {
+      "id": "TC005",
+      "name": "International Candidate - Visa Required",
+      "difficulty": "MEDIUM",
+      "recipe": "recruiter-dm",
+      "challenge": "Candidate needs visa sponsorship. Sensitive topic.",
+      "inputs": {
+        "job_posting": "Machine Learning Engineer at Google. PhD preferred, 3+ years industry experience in NLP.",
+        "your_experience": "PhD in Computational Linguistics from ETH Zurich. 4 years at European AI startup. Published 8 papers in top NLP conferences. Built multilingual models serving 10M users. Currently in Switzerland, would need H-1B sponsorship.",
+        "company_research": "Google's multilingual BERT work directly relates to my research. Opportunity to work on models that serve billions across languages.",
+        "connection_context": "cold",
+        "tone": "confident_peer"
+      },
+      "watch_for": [
+        "Should NOT mention visa in initial DM",
+        "Should NOT hide impressive credentials",
+        "Should lead with strong qualifications",
+        "Visa discussion is for later stages"
+      ]
+    },
+    {
+      "id": "TC006",
+      "name": "Entry Level - No Professional Experience",
+      "difficulty": "HARD",
+      "recipe": "recruiter-dm",
+      "challenge": "New grad with only academic/project experience. AI might oversell.",
+      "inputs": {
+        "job_posting": "Junior Software Engineer at Stripe. CS degree, familiarity with Python or Ruby, interest in payments.",
+        "your_experience": "BS Computer Science, graduated last month. GPA 3.8. Built payment integration project for senior capstone using Stripe API. Contributed to 2 open source projects. One summer internship at local startup doing basic CRUD apps. No professional engineering experience.",
+        "company_research": "Stripe's developer experience is why I fell in love with APIs. Their documentation inspired my capstone project.",
+        "connection_context": "cold",
+        "tone": "warm_professional"
+      },
+      "watch_for": [
+        "Should NOT claim 'years of experience'",
+        "Should NOT oversell internship",
+        "Should highlight genuine Stripe connection",
+        "Should sound eager but not desperate"
+      ]
+    },
+    {
+      "id": "TC007",
+      "name": "Layoff Situation",
+      "difficulty": "MEDIUM",
+      "recipe": "recruiter-dm",
+      "challenge": "Recently laid off. AI might sound desperate or overshare.",
+      "inputs": {
+        "job_posting": "Engineering Manager at Figma. 5+ years eng experience, 2+ years managing teams.",
+        "your_experience": "8 years software engineering, 3 years managing team of 12 at Meta. Led design tools team. Recently impacted by layoffs in January 2026. Strong track record: team shipped 3 major features, reduced bug backlog 60%, promoted 4 engineers.",
+        "company_research": "Figma's collaborative approach to design mirrors how I believe engineering teams should work. Been a Figma power user for years.",
+        "connection_context": "mutual_connection",
+        "tone": "confident_peer"
+      },
+      "watch_for": [
+        "Should NOT mention layoff",
+        "Should NOT sound desperate or urgent",
+        "Should focus on achievements, not circumstances",
+        "Should maintain confidence"
+      ]
+    },
+    {
+      "id": "TC008",
+      "name": "Competing Offer Situation",
+      "difficulty": "MEDIUM",
+      "recipe": "follow-up",
+      "challenge": "User has competing offer and wants to create urgency without being pushy.",
+      "inputs": {
+        "original_message": "Hi [Name], Fellow design systems engineer here. After building Figma's component library to 500+ components used by 200 designers, I'm drawn to your team's approach to design tokens. Open to connecting?",
+        "days_since": "1-week",
+        "signal": "viewed_profile",
+        "new_value": "Just received an offer from another company but Airbnb remains my top choice. Want to be transparent about timeline.",
+        "your_experience": "7 years design systems, built component libraries at scale, currently at Figma."
+      },
+      "watch_for": [
+        "Should NOT use competing offer as pressure",
+        "Should NOT sound like an ultimatum",
+        "Should mention timeline professionally if at all",
+        "Should still add value, not just create urgency"
+      ]
+    },
+    {
+      "id": "TC009",
+      "name": "Very Technical Role - Dense Requirements",
+      "difficulty": "MEDIUM",
+      "recipe": "recruiter-dm",
+      "challenge": "Highly technical JD with many requirements. AI might try to address all.",
+      "inputs": {
+        "job_posting": "Staff Site Reliability Engineer at Cloudflare. Requirements: 8+ years, Kubernetes at scale (1000+ nodes), Prometheus/Grafana, Terraform, Go or Rust, incident management, on-call experience, distributed systems design, chaos engineering, service mesh (Istio/Linkerd), GitOps, capacity planning.",
+        "your_experience": "10 years SRE. Currently at AWS managing K8s clusters (500+ nodes). Built observability platform with Prometheus/Grafana used by 50 teams. Terraform expert. Go for tooling. Led incident response for S3 region. Implemented chaos engineering program that prevented 3 major outages.",
+        "company_research": "Cloudflare's edge computing approach fascinates me. Your recent work on R2 and Workers shows how infra can enable new product categories.",
+        "connection_context": "same_industry",
+        "tone": "direct"
+      },
+      "watch_for": [
+        "Should NOT list all qualifications",
+        "Should pick ONE impressive point",
+        "Should stay under character limit",
+        "Should not sound like a keyword dump"
+      ]
+    },
+    {
+      "id": "TC010",
+      "name": "Non-Traditional Background",
+      "difficulty": "HARD",
+      "recipe": "recruiter-dm",
+      "challenge": "Bootcamp grad competing for role typically requiring CS degree.",
+      "inputs": {
+        "job_posting": "Backend Engineer at Plaid. CS degree preferred, 3+ years experience, strong fundamentals in algorithms and data structures.",
+        "your_experience": "Former high school math teacher for 6 years. Completed Hack Reactor bootcamp 2023. Since then: 2 years at fintech startup, built API handling 1M requests/day, self-studied algorithms (completed all LeetCode hards in DP and graphs). No CS degree.",
+        "company_research": "Plaid's API-first approach to banking data is exactly what I want to build. Their developer docs are the gold standard I aspire to.",
+        "connection_context": "cold",
+        "tone": "confident_peer"
+      },
+      "watch_for": [
+        "Should NOT apologize for non-traditional path",
+        "Should NOT hide bootcamp background",
+        "Should highlight relevant achievements",
+        "Should sound confident, not defensive"
+      ]
+    },
+    {
+      "id": "TC011",
+      "name": "Hiring Post Comment - Don't Pitch",
+      "difficulty": "HARD",
+      "recipe": "recruiter-comment",
+      "challenge": "Hiring post - should add value, not pitch for the job.",
+      "inputs": {
+        "post_content": "We're hiring Senior Engineers at Notion! Looking for people who care deeply about craft and want to build tools that help teams collaborate. Remote-friendly, strong eng culture. DM me if interested!",
+        "post_type": "hiring",
+        "your_angle": "I've noticed the best collaboration tools succeed when they reduce friction between thought and action. Notion does this well with its block-based approach.",
+        "target_role": "Senior Software Engineer",
+        "your_experience": "7 years building productivity tools. Currently at Asana. Shipped features used by millions."
+      },
+      "watch_for": [
+        "Should NOT say 'I'm interested!'",
+        "Should NOT list qualifications",
+        "Should NOT ask how to apply",
+        "Should add thoughtful insight about collaboration tools",
+        "Should make them curious to click profile"
+      ]
+    },
+    {
+      "id": "TC012",
+      "name": "Controversial Opinion Post - Navigate Carefully",
+      "difficulty": "HARD",
+      "recipe": "recruiter-comment",
+      "challenge": "Recruiter posted hot take. Need to engage thoughtfully without being sycophantic or confrontational.",
+      "inputs": {
+        "post_content": "Hot take: Cover letters are dead. Nobody reads them. Stop wasting time on them and spend that energy on your portfolio instead. Disagree? Fight me in the comments 😤",
+        "post_type": "industry_insight",
+        "your_angle": "I think it depends on the role. For creative positions, portfolio matters more. For leadership roles, a cover letter that shows strategic thinking can differentiate. Context matters.",
+        "target_role": "",
+        "your_experience": "10 years in recruiting and HR. Hired 500+ people. Have read thousands of applications."
+      },
+      "watch_for": [
+        "Should NOT just agree blindly",
+        "Should NOT be argumentative/confrontational",
+        "Should add nuance respectfully",
+        "Should sound like peer discussion, not lecture"
+      ]
+    },
+    {
+      "id": "TC013",
+      "name": "Cold Email - Referral Mentioned",
+      "difficulty": "MEDIUM",
+      "recipe": "cold-email",
+      "challenge": "Has a referral name - should use it prominently without name-dropping awkwardly.",
+      "inputs": {
+        "recipient_name": "Michael Torres",
+        "recipient_title": "Director of Engineering",
+        "company": "Databricks",
+        "target_role": "Senior Data Engineer",
+        "your_experience": "6 years data engineering. Currently at Snowflake building pipelines processing 5TB/day. Apache Spark contributor. Reduced data processing costs by 40% through query optimization.",
+        "why_company": "Your Unity Catalog vision for data governance is exactly where I see the industry heading. Plus my former colleague Jennifer Wu on your platform team speaks highly of the engineering culture.",
+        "how_found": "referral"
+      },
+      "watch_for": [
+        "Should lead with referral name",
+        "Should NOT over-explain the connection",
+        "Should still include strong credential",
+        "Should be concise, not rambling"
+      ]
+    },
+    {
+      "id": "TC014",
+      "name": "Cold Email - No Referral, Cold Outreach",
+      "difficulty": "HARD",
+      "recipe": "cold-email",
+      "challenge": "Truly cold outreach. Needs to earn attention without any warm intro.",
+      "inputs": {
+        "recipient_name": "Lisa Park",
+        "recipient_title": "VP of Engineering",
+        "company": "Ramp",
+        "target_role": "Staff Engineer",
+        "your_experience": "9 years fintech engineering. Built fraud detection system at Square that prevented $50M in losses. Led payments infrastructure team of 8. Strong background in PCI compliance and financial systems.",
+        "why_company": "Ramp's approach to expense management by actually helping companies spend less (vs just tracking) is refreshingly aligned with user value. Your recent virtual card features show product-eng collaboration I want to be part of.",
+        "how_found": "hunter"
+      },
+      "watch_for": [
+        "Should NOT apologize for cold outreach",
+        "Should hook immediately with strong credential",
+        "Should be extremely concise",
+        "Should NOT sound like mass email"
+      ]
+    },
+    {
+      "id": "TC015",
+      "name": "Follow-Up After Profile View",
+      "difficulty": "MEDIUM",
+      "recipe": "follow-up",
+      "challenge": "They viewed profile but didn't respond. Good signal but don't be creepy about it.",
+      "inputs": {
+        "original_message": "Hi [Name], I noticed we share connections in healthtech. After scaling Teladoc's platform to handle 10M+ virtual visits, I'm excited about Hinge Health's approach to MSK care. Worth a quick chat?",
+        "days_since": "3-5",
+        "signal": "viewed_profile",
+        "new_value": "Just saw your team's presentation at HLTH conference about outcomes-based care. The 60% reduction in surgery rates is remarkable.",
+        "your_experience": "8 years healthtech engineering, scaled platforms for telehealth, strong background in HIPAA compliance"
+      },
+      "watch_for": [
+        "Should acknowledge profile view subtly (if at all)",
+        "Should NOT be creepy ('I saw you looked at me')",
+        "Should add NEW value (conference reference)",
+        "Should NOT repeat the 10M visits stat"
+      ]
+    },
+    {
+      "id": "TC016",
+      "name": "Multiple Rejection Signals",
+      "difficulty": "HARD",
+      "recipe": "follow-up",
+      "challenge": "Second follow-up, no engagement at all. Should probably not send, or be very light.",
+      "inputs": {
+        "original_message": "Hi [Name], Quick note from a fellow fintech PM. After launching Venmo's business profiles to 2M merchants, I'm drawn to Cash App's approach to banking the underbanked. Open to connecting?",
+        "days_since": "2-weeks",
+        "signal": "none",
+        "new_value": "",
+        "your_experience": "6 years PM in payments, launched features used by millions, strong track record in consumer fintech"
+      },
+      "watch_for": [
+        "Should be VERY short",
+        "Should NOT repeat original pitch",
+        "Should NOT sound desperate",
+        "Should give easy out ('totally understand if not a fit')",
+        "May suggest not sending at all"
+      ]
+    },
+    {
+      "id": "TC017",
+      "name": "Creative Role - Portfolio Focus",
+      "difficulty": "MEDIUM",
+      "recipe": "recruiter-dm",
+      "challenge": "Design role where portfolio matters more than metrics. AI might over-index on numbers.",
+      "inputs": {
+        "job_posting": "Senior Product Designer at Linear. Looking for someone with strong visual design skills, systems thinking, and passion for developer tools.",
+        "your_experience": "5 years product design. Led redesign of GitHub's code review experience. Created design system used by 100+ engineers. Work featured in Figma's design systems gallery. Strong background in developer tools UX.",
+        "company_research": "Linear's commitment to craft is evident in every interaction. The keyboard-first design philosophy matches how I think about power user experiences.",
+        "connection_context": "engaged_content",
+        "tone": "confident_peer"
+      },
+      "watch_for": [
+        "Should emphasize craft and taste",
+        "Should mention relevant portfolio work",
+        "Should NOT just list metrics",
+        "Should show understanding of design philosophy"
+      ]
+    },
+    {
+      "id": "TC018",
+      "name": "Startup to Big Tech Transition",
+      "difficulty": "MEDIUM",
+      "recipe": "recruiter-dm",
+      "challenge": "Moving from chaotic startup to structured big tech. Might seem like culture mismatch.",
+      "inputs": {
+        "job_posting": "Software Engineer at Microsoft Azure. Looking for engineers who can work within large codebases, follow established processes, and collaborate across time zones.",
+        "your_experience": "6 years at early-stage startups (3 companies, 2 acquisitions). Full-stack generalist. Built and shipped fast in ambiguous environments. Led engineering at 15-person startup from 0 to $5M ARR. Ready for more structure and scale.",
+        "company_research": "Azure's approach to hybrid cloud solves real enterprise problems. After years of startup chaos, I'm excited to work on systems that serve millions with proper engineering rigor.",
+        "connection_context": "cold",
+        "tone": "direct"
+      },
+      "watch_for": [
+        "Should explain WHY big tech (positively)",
+        "Should NOT bash startups",
+        "Should show adaptability",
+        "Should NOT oversell startup chaos as pure positive"
+      ]
+    },
+    {
+      "id": "TC019",
+      "name": "Same Company Different Team",
+      "difficulty": "MEDIUM",
+      "recipe": "recruiter-dm",
+      "challenge": "Internal mobility situation - reaching out to recruiter at same company but different org.",
+      "inputs": {
+        "job_posting": "ML Engineer on Google Search. Building next-gen ranking systems. Looking for strong ML fundamentals and production experience.",
+        "your_experience": "Currently L5 SWE at Google Cloud (3 years). Built data pipelines, some ML exposure through TFX. Want to transition to ML-focused role. Internal transfer preferred. Strong performance reviews but limited ML production experience.",
+        "company_research": "Search ranking is the problem that got me interested in ML originally. Being at Google already, I understand the culture and want to grow my ML skills where it matters most.",
+        "connection_context": "same_industry",
+        "tone": "warm_professional"
+      },
+      "watch_for": [
+        "Should mention internal status appropriately",
+        "Should NOT over-claim ML experience",
+        "Should show genuine interest in ML growth",
+        "Should be honest about experience level"
+      ]
+    },
+    {
+      "id": "TC020",
+      "name": "Returning After Being Passed",
+      "difficulty": "HARD",
+      "recipe": "recruiter-dm",
+      "challenge": "Was rejected 6 months ago, applying again. Tricky situation.",
+      "inputs": {
+        "job_posting": "Senior Frontend Engineer at Vercel. React, TypeScript, performance optimization.",
+        "your_experience": "5 years frontend. Interviewed at Vercel 6 months ago, made it to final round but wasn't selected. Since then: led migration of 500K LOC codebase to Next.js 14, reduced bundle size by 60%, became core contributor to a popular React library. Much stronger candidate now.",
+        "company_research": "Still believe Vercel is where frontend is heading. The recent Server Actions and partial prerendering work aligns perfectly with what I've been building.",
+        "connection_context": "cold",
+        "tone": "confident_peer"
+      },
+      "watch_for": [
+        "Should acknowledge previous process gracefully",
+        "Should highlight growth since rejection",
+        "Should NOT sound bitter or defensive",
+        "Should make clear case for reconsideration"
+      ]
+    }
+  ],
+  "scoring_rubric": {
+    "hallucination_check": {
+      "weight": 30,
+      "criteria": "Every factual claim must trace to user input. Any invented metric, credential, or detail is a fail."
+    },
+    "length_compliance": {
+      "weight": 15,
+      "criteria": "Must meet platform requirements (DM: ≤280, Follow-up: ≤200, Comment: ≤300, Email body: ≤150 words)"
+    },
+    "hook_quality": {
+      "weight": 15,
+      "criteria": "First line should grab attention. 'I'm reaching out' or 'I saw your posting' is automatic fail."
+    },
+    "tone_appropriateness": {
+      "weight": 15,
+      "criteria": "Should match context. No desperation, arrogance, or robotic template feel."
+    },
+    "strategic_judgment": {
+      "weight": 15,
+      "criteria": "Makes smart choices about what to include/exclude given the specific situation."
+    },
+    "cta_quality": {
+      "weight": 10,
+      "criteria": "Clear, soft ask that's easy to respond to. Not presumptuous or demanding."
+    }
+  }
+}

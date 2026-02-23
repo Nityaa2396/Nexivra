@@ -1,0 +1,265 @@
+id: "follow-up"
+name: "Follow-Up Message"
+description: "Second touch after no reply. Adds new value without repeating yourself."
+category: "follow-up"
+version: "2.0"
+
+inputs:
+  - id: "original_message"
+    type: "textarea"
+    label: "Your original message (paste it)"
+    placeholder: "Hi [Name], I noticed we share connections in diagnostics. After driving 25% growth across NA..."
+    required: true
+    help: "We'll make sure the follow-up doesn't repeat the same points"
+
+  - id: "days_since"
+    type: "select"
+    label: "How long since your first message?"
+    options:
+      - value: "3-5"
+        label: "3-5 days"
+      - value: "1-week"
+        label: "About a week"
+      - value: "2-weeks"
+        label: "2 weeks"
+    required: true
+
+  - id: "signal"
+    type: "select"
+    label: "Any signal from them?"
+    options:
+      - value: "none"
+        label: "No response, no activity"
+      - value: "viewed_profile"
+        label: "They viewed my profile"
+      - value: "accepted_connection"
+        label: "Accepted connection, no reply"
+      - value: "liked_post"
+        label: "Liked my post or comment"
+    required: true
+
+  - id: "new_value"
+    type: "textarea"
+    label: "Something new to offer (optional but recommended)"
+    placeholder: "Saw their recent post about X, completed a relevant project, found an article they might like..."
+    required: false
+    help: "New info makes follow-ups feel valuable, not pestering"
+
+  - id: "your_experience"
+    type: "textarea"
+    label: "Your relevant experience (for reference)"
+    required: true
+    help: "Same as before, but we'll pick a DIFFERENT angle this time"
+
+steps:
+  - id: "analyze_original"
+    name: "Analyze original message"
+    prompt: |
+      Analyze this original outreach message to avoid repetition.
+      
+      ORIGINAL MESSAGE:
+      {{original_message}}
+      
+      Extract and return JSON:
+      {
+        "hook_used": "how they opened",
+        "credential_mentioned": "what achievement/stat they used",
+        "company_reference": "what they said about company",
+        "cta_used": "their call to action",
+        "tone": "professional/casual/direct"
+      }
+      
+      Be specific so we can avoid repeating these exact elements.
+    outputKey: "original_analysis"
+    gates: []
+
+  - id: "generate_followup"
+    name: "Generate follow-up"
+    prompt: |
+      Write a follow-up message that adds value without repeating the original.
+      
+      ORIGINAL MESSAGE ANALYSIS:
+      {{original_analysis}}
+      
+      TIME SINCE ORIGINAL: {{days_since}}
+      SIGNAL RECEIVED: {{signal}}
+      NEW VALUE TO OFFER: {{new_value}}
+      
+      USER'S EXPERIENCE (for new angle):
+      {{your_experience}}
+      
+      ---
+      
+      FOLLOW-UP FORMULA:
+      
+      1. ACKNOWLEDGE (brief, not passive-aggressive)
+         - If viewed_profile: "Noticed you checked out my profile..."
+         - If accepted_connection: "Thanks for connecting..."
+         - If none: "Following up briefly..." or "Quick bump..."
+         - NEVER: "I know you're busy but..." or "Sorry to bother you again..."
+      
+      2. NEW VALUE (not repetition)
+         - Different credential than original used: {{original_analysis.credential_mentioned}}
+         - OR new insight/article/observation
+         - OR simpler ask than before
+         - NEVER repeat the same stat or achievement
+      
+      3. SOFTER CTA (even easier than first time)
+         - "Worth a quick chat?"
+         - "Any thoughts?"
+         - "Happy to share more if helpful"
+         - NEVER escalate pressure
+      
+      ---
+      
+      HARD CONSTRAINTS:
+      - MAXIMUM 200 characters (shorter than original)
+      - DO NOT repeat: {{original_analysis.credential_mentioned}}
+      - DO NOT repeat: {{original_analysis.hook_used}}
+      - NO guilt trips ("I haven't heard back", "Just checking if you saw...")
+      - NO passive aggression
+      - NO multiple messages feel (don't reference "my last message" explicitly)
+      
+      ---
+      
+      Return ONLY the message. Max 200 characters.
+    outputKey: "followup_draft"
+    gates:
+      - "length_gate"
+      - "repetition_gate"
+      - "tone_gate"
+      - "guilt_gate"
+      - "evidence_gate"
+
+gates:
+  length_gate:
+    type: "rule"
+    priority: 1
+    check: "character_count"
+    max: 200
+    onFail: "rewrite"
+    maxRetries: 3
+    failMessage: "Follow-ups should be shorter than originals. Max 200 chars."
+
+  repetition_gate:
+    type: "llm_judge"
+    priority: 2
+    prompt: |
+      Check if this follow-up repeats elements from the original message.
+      
+      ORIGINAL MESSAGE ANALYSIS:
+      {{original_analysis}}
+      
+      FOLLOW-UP:
+      "{{followup_draft}}"
+      
+      FAIL IF:
+      - Uses the same credential/stat as original
+      - Same opening hook pattern
+      - Same CTA phrasing
+      - Feels like a copy with minor edits
+      
+      Return JSON:
+      {
+        "passed": true/false,
+        "repeated_elements": ["list of repetitions"],
+        "freshness_score": 1-10,
+        "reason": "assessment"
+      }
+      
+      Pass if freshness_score >= 7 and no major repeated elements.
+    onFail: "rewrite"
+    maxRetries: 2
+
+  tone_gate:
+    type: "llm_judge"
+    priority: 3
+    prompt: |
+      Check tone of this follow-up message.
+      
+      MESSAGE: "{{followup_draft}}"
+      
+      FAIL IF:
+      - Desperate: "I really hope to hear from you"
+      - Pushy: "I wanted to make sure you saw..."
+      - Passive-aggressive: "I guess you're not interested"
+      - Over-apologetic: "Sorry to bother you again"
+      
+      PASS IF:
+      - Confident but respectful
+      - Adds value or new angle
+      - Easy to respond to
+      - Respects their time
+      
+      Return JSON:
+      {
+        "passed": true/false,
+        "tone_detected": "confident|desperate|pushy|passive_aggressive|apologetic",
+        "reason": "assessment"
+      }
+    onFail: "rewrite"
+    maxRetries: 1
+
+  guilt_gate:
+    type: "llm_judge"
+    priority: 4
+    prompt: |
+      Check for guilt-tripping language in this follow-up.
+      
+      MESSAGE: "{{followup_draft}}"
+      
+      GUILT TRIP PHRASES (instant fail):
+      - "I haven't heard back"
+      - "Just checking if you received"
+      - "Not sure if you saw my message"
+      - "I know you're busy but"
+      - "I understand if you're not interested"
+      - "I'll take your silence as a no"
+      - "Last attempt to reach you"
+      
+      Return JSON:
+      {
+        "passed": true/false,
+        "guilt_phrases_found": ["list"],
+        "reason": "assessment"
+      }
+    onFail: "rewrite"
+    maxRetries: 2
+
+  evidence_gate:
+    type: "llm_judge"
+    priority: 5
+    prompt: |
+      Verify any factual claims in this follow-up.
+      
+      MESSAGE: "{{followup_draft}}"
+      
+      USER'S EXPERIENCE:
+      {{your_experience}}
+      
+      NEW VALUE OFFERED:
+      {{new_value}}
+      
+      For any factual claims, verify they exist in inputs.
+      
+      Return JSON:
+      {
+        "passed": true/false,
+        "evidence": [
+          {
+            "claim": "claim text",
+            "source_field": "your_experience|new_value|null",
+            "verified": true/false,
+            "reason": "explanation"
+          }
+        ],
+        "reason": "overall"
+      }
+    onFail: "rewrite"
+    maxRetries: 1
+
+output:
+  format: "text"
+  maxLength: 200
+  showEvidenceMap: true
+  showGateScores: true
