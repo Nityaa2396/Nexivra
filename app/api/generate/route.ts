@@ -116,7 +116,7 @@ function runQualityGates(output: string, inputs: Record<string, string>, recipeI
   const hasPersonalization = recruiterName && output.toLowerCase().includes(recruiterName.split(" ")[0].toLowerCase());
   gates.push({
     name: "Personalized",
-    passed: hasPersonalization,
+    passed: Boolean(hasPersonalization),
     reason: hasPersonalization ? "Uses recipient name" : "Missing personalization",
   });
 
