@@ -223,9 +223,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## 👤 Author
 
-**Krishna (Nitya)**
+** Nitya **
 - GitHub: [@Nityaa2396](https://github.com/Nityaa2396)
-
----
-
-Built with ❤️ using Claude AI
+  
