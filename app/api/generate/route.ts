@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
+const apiKey = process.env.ANTHROPIC_API_KEY;
+console.log("API Key exists:", !!apiKey);
+console.log("API Key length:", apiKey?.length || 0);
+console.log("API Key starts with:", apiKey?.substring(0, 10) || "undefined");
+
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
