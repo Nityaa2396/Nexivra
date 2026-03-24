@@ -7,11 +7,20 @@ import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { supabase } from "@/lib/supabase";
 
+interface InputField {
+  id: string;
+  label: string;
+  type: "text" | "textarea" | "select";
+  placeholder?: string;
+  required: boolean;
+  options?: { value: string; label: string }[];
+}
+
 const MOCK_RECIPES: Record<string, { 
   name: string; 
   description: string; 
   color: string; 
-  inputs: Array<{ id: string; label: string; type: string; placeholder: string; required: boolean }> 
+  inputs: InputField[];
 }> = {
   "recruiter-dm": {
     name: "Recruiter LinkedIn DM",
@@ -21,7 +30,35 @@ const MOCK_RECIPES: Record<string, {
       { id: "job_posting", label: "Job Posting / Role", type: "textarea", placeholder: "Paste the job posting or describe the role you're targeting...", required: true },
       { id: "your_experience", label: "Your Relevant Experience", type: "textarea", placeholder: "Your achievements with metrics (e.g., 'Scaled platform to 10M users, reduced latency by 40%')", required: true },
       { id: "recruiter_name", label: "Recruiter's First Name", type: "text", placeholder: "e.g., Sarah", required: true },
-      { id: "mutual_connection", label: "Mutual Connection / Shared Interest", type: "text", placeholder: "e.g., Both worked in healthtech, shared connection with John", required: false },
+      { id: "company_insight", label: "Company Insight", type: "textarea", placeholder: "Recent news, product launch, or something specific about the company...", required: false },
+      { 
+        id: "connection_type", 
+        label: "How You're Connected", 
+        type: "select", 
+        required: false,
+        options: [
+          { value: "", label: "Select connection type..." },
+          { value: "mutual_connection", label: "Mutual connection" },
+          { value: "same_company", label: "Worked at same company" },
+          { value: "same_school", label: "Same university/school" },
+          { value: "commented_post", label: "Commented on their post" },
+          { value: "viewed_profile", label: "They viewed my profile" },
+          { value: "same_group", label: "Same LinkedIn group" },
+          { value: "none", label: "No prior connection" },
+        ]
+      },
+      { 
+        id: "tone", 
+        label: "Tone", 
+        type: "select", 
+        required: false,
+        options: [
+          { value: "professional", label: "Professional" },
+          { value: "warm", label: "Warm & Friendly" },
+          { value: "confident", label: "Confident & Direct" },
+          { value: "casual", label: "Casual" },
+        ]
+      },
     ]
   },
   "follow-up": {
@@ -32,7 +69,43 @@ const MOCK_RECIPES: Record<string, {
       { id: "original_message", label: "Your Original Message", type: "textarea", placeholder: "Paste what you sent before...", required: true },
       { id: "new_value", label: "New Value to Add", type: "textarea", placeholder: "New achievement, relevant news, article, or insight to share...", required: true },
       { id: "recruiter_name", label: "Recruiter's First Name", type: "text", placeholder: "e.g., Sarah", required: true },
-      { id: "days_since", label: "Days Since Original Message", type: "text", placeholder: "e.g., 5 days", required: false },
+      { 
+        id: "days_since", 
+        label: "Days Since Original Message", 
+        type: "select", 
+        required: false,
+        options: [
+          { value: "3-5", label: "3-5 days" },
+          { value: "1_week", label: "About 1 week" },
+          { value: "2_weeks", label: "About 2 weeks" },
+          { value: "1_month", label: "About 1 month" },
+        ]
+      },
+      { 
+        id: "signal", 
+        label: "Any Signal From Them?", 
+        type: "select", 
+        required: false,
+        options: [
+          { value: "", label: "Select if any..." },
+          { value: "viewed_profile", label: "They viewed my profile" },
+          { value: "liked_post", label: "They liked my post" },
+          { value: "company_news", label: "Company had news/announcement" },
+          { value: "job_reposted", label: "Job was reposted" },
+          { value: "none", label: "No signal" },
+        ]
+      },
+      { 
+        id: "tone", 
+        label: "Tone", 
+        type: "select", 
+        required: false,
+        options: [
+          { value: "professional", label: "Professional" },
+          { value: "warm", label: "Warm & Friendly" },
+          { value: "persistent", label: "Politely Persistent" },
+        ]
+      },
     ]
   },
   "recruiter-comment": {
@@ -42,7 +115,20 @@ const MOCK_RECIPES: Record<string, {
     inputs: [
       { id: "post_content", label: "Their Post Content", type: "textarea", placeholder: "Paste or describe what they posted...", required: true },
       { id: "your_expertise", label: "Your Relevant Expertise", type: "textarea", placeholder: "What insight can you add based on your experience?", required: true },
-      { id: "your_take", label: "Your Unique Take", type: "text", placeholder: "What's your perspective on their topic?", required: false },
+      { id: "your_take", label: "Your Unique Take", type: "textarea", placeholder: "What's your perspective on their topic?", required: false },
+      { 
+        id: "comment_style", 
+        label: "Comment Style", 
+        type: "select", 
+        required: false,
+        options: [
+          { value: "add_insight", label: "Add insight/data" },
+          { value: "share_experience", label: "Share related experience" },
+          { value: "ask_question", label: "Ask thoughtful question" },
+          { value: "agree_expand", label: "Agree and expand" },
+          { value: "respectful_disagree", label: "Respectfully disagree" },
+        ]
+      },
     ]
   },
   "cold-email": {
@@ -53,7 +139,29 @@ const MOCK_RECIPES: Record<string, {
       { id: "job_posting", label: "Job Posting / Role", type: "textarea", placeholder: "Paste the job posting or describe the role...", required: true },
       { id: "your_experience", label: "Your Relevant Experience", type: "textarea", placeholder: "Your key achievements with metrics...", required: true },
       { id: "recruiter_name", label: "Recruiter's First Name", type: "text", placeholder: "e.g., Sarah", required: true },
-      { id: "company_insight", label: "Company-Specific Insight", type: "text", placeholder: "Recent news, product launch, or something specific about them...", required: false },
+      { id: "company_insight", label: "Company-Specific Insight", type: "textarea", placeholder: "Recent news, product launch, or something specific about them...", required: false },
+      { 
+        id: "tone", 
+        label: "Tone", 
+        type: "select", 
+        required: false,
+        options: [
+          { value: "professional", label: "Professional" },
+          { value: "warm", label: "Warm & Friendly" },
+          { value: "confident", label: "Confident & Direct" },
+        ]
+      },
+      { 
+        id: "email_length", 
+        label: "Email Length", 
+        type: "select", 
+        required: false,
+        options: [
+          { value: "short", label: "Short (3-4 sentences)" },
+          { value: "medium", label: "Medium (5-6 sentences)" },
+          { value: "detailed", label: "Detailed (with specifics)" },
+        ]
+      },
     ]
   }
 };
@@ -233,6 +341,28 @@ export default function RecipePage() {
                         outline: 'none',
                       }}
                     />
+                  ) : input.type === 'select' ? (
+                    <select
+                      value={inputs[input.id] || ''}
+                      onChange={(e) => handleInputChange(input.id, e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '14px 16px',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                        color: '#fafafa',
+                        fontSize: '14px',
+                        outline: 'none',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {input.options?.map(opt => (
+                        <option key={opt.value} value={opt.value} style={{ backgroundColor: '#18181b' }}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   ) : (
                     <input
                       type="text"
